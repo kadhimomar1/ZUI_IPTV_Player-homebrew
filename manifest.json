@@ -5,6 +5,11 @@
   "title": "ZUI IPTV Player",
   "appDescription": "ZUI IPTV Player",
   "iconUri": "https://raw.githubusercontent.com/kadhimomar1/ZUI_IPTV_Player-homebrew/main/icon.png",
-  "sourceUrl": "https://github.com/kadhimomar1/ZUI_IPTV_Player-homebrew",
-  "rootRequired": false
+  "sourceUrl": "https://github.com/Simulate-X/ZUI_IPTV_Player",
+  "rootRequired": false,
+  "ipkUrl": "https://github.com/Simulate-X/ZUI_IPTV_Player/releases/download/v1.0.0/com.zui.player_1.0.0_all.ipk",
+  "ipkHash": {
+    "sha256": "f542f03be49a4e6e870106c043f3c529297210cf0a55aca7c50f8ab863df9dc9"
+  },
+  "ipkSize": 1401780
 }
