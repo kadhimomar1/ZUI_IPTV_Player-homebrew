@@ -1,0 +1,97 @@
+name: Update ZUI Manifest
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get latest ZUI release
+        id: release
+        run: |
+          RELEASE=$(curl -fsSL \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/Simulate-X/ZUI_IPTV_Player/releases/latest")
+
+          TAG=$(echo "$RELEASE" | jq -r '.tag_name')
+
+          IPK=$(echo "$RELEASE" | jq -r \
+            '.assets[] | select(.name | endswith(".ipk")) | .browser_download_url' | head -n 1)
+
+          NAME=$(echo "$RELEASE" | jq -r \
+            '.assets[] | select(.name | endswith(".ipk")) | .name' | head -n 1)
+
+          if [ -z "$IPK" ] || [ "$IPK" = "null" ]; then
+            echo "No IPK found."
+            exit 1
+          fi
+
+          VERSION="${TAG#v}"
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "ipk=$IPK" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Download latest IPK
+        run: |
+          curl -fL \
+            "${{ steps.release.outputs.ipk }}" \
+            -o app.ipk
+
+      - name: Calculate SHA256 and size
+        id: data
+        run: |
+          SHA256=$(sha256sum app.ipk | awk '{print $1}')
+          SIZE=$(stat -c%s app.ipk)
+
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+
+      - name: Update manifest
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          IPK: ${{ steps.release.outputs.ipk }}
+          SHA256: ${{ steps.data.outputs.sha256 }}
+          SIZE: ${{ steps.data.outputs.size }}
+        run: |
+          cat > manifest.json <<EOF
+          {
+            "id": "com.zui.player",
+            "version": "$VERSION",
+            "type": "web",
+            "title": "ZUI IPTV Player",
+            "appDescription": "ZUI IPTV Player",
+            "iconUri": "https://raw.githubusercontent.com/kadhimomar1/ZUI_IPTV_Player-homebrew/main/icon.png",
+            "sourceUrl": "https://github.com/Simulate-X/ZUI_IPTV_Player",
+            "rootRequired": false,
+            "ipkUrl": "$IPK",
+            "ipkHash": {
+              "sha256": "$SHA256"
+            },
+            "ipkSize": $SIZE
+          }
+          EOF
+
+      - name: Commit update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add manifest.json
+
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "Update ZUI manifest"
+            git push
+          fi
